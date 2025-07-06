@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S Language Interpreter</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles to ensure full height and Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Ensure body takes full viewport height */
+            background-color: #f0f4f8; /* Light gray background */
+        }
+        #app-container {
+            flex-grow: 1; /* Allow container to grow and fill available space */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            max-width: 90%; /* Max width for larger screens */
+            margin: 0 auto; /* Center the container */
+            width: 100%; /* Ensure it takes full width on small screens */
+        }
+        textarea {
+            resize: vertical; /* Allow vertical resizing */
+            min-height: 150px; /* Minimum height for the textarea */
+        }
+        #output {
+            background-color: #1f2937; /* Darker background for code/output sections */
+            color: #d1d5db; /* Light gray text */
+            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace; /* Monospaced font */
+            font-size: 0.875rem; /* text-sm */
+            padding: 1rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #374151; /* border-gray-700 */
+            overflow-x: auto; /* Allow horizontal scrolling for long lines */
+            min-height: 150px; /* Minimum height */
+            max-height: 400px; /* Max height before scrolling */
+            color: #c2f0c2; /* A softer green for general output */
+        }
+        #output img {
+            max-width: 100%; /* Ensure images are responsive within the output div */
+            height: auto; /* Maintain aspect ratio */
+            border-radius: 0.5rem; /* Rounded corners for images */
+            margin-top: 0.5rem; /* Space above images */
+            margin-bottom: 0.5rem; /* Space below images */
+            display: block; /* Ensure images take full width and new line */
+        }
+        .error-message {
+            color: #ef4444; /* text-red-500 */
+            font-weight: bold;
+        }
+        .info-message { /* Info messages will no longer be used for program flow, but kept for save/load confirmations */
+            color: #9ca3af; /* text-gray-400 */
+        }
+        .input-prompt-container {
+            display: flex;
+            flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background-color: #374151; /* Darker background for input area */
+            border-radius: 0.25rem;
+        }
+        .input-prompt-container input {
+            flex-grow: 1; /* Allow input to take available space */
+            min-width: 150px; /* Minimum width for input field */
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            border: 1px solid #4b5563;
+            background-color: #1f2937;
+            color: #d1d5db;
+        }
+        .input-prompt-container button {
+            padding: 0.5rem 1rem;
+            background-color: #2563eb; /* blue-600 */
+            color: white;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .input-prompt-container button:hover {
+            background-color: #1d4ed8; /* blue-700 */
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+            gap: 1rem; /* Space between buttons */
+            justify-content: center; /* Center buttons horizontally */
+            width: 100%;
+        }
+        /* Hide the file input visually but keep it accessible */
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div id="app-container" class="bg-white shadow-lg rounded-xl p-6 md:p-8 flex flex-col gap-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-4">S Language Interpreter</h1>
+
+        <!-- Code Input Section -->
+        <div class="w-full">
+            <label for="sCodeInput" class="block text-lg font-semibold text-gray-700 mb-2">Write your S code here:</label>
+            <textarea
+                id="sCodeInput"
+                class="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 bg-gray-50 transition duration-200 ease-in-out"
+                placeholder=""
+            ></textarea>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="button-group">
+            <button
+                id="runButton"
+                class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105"
+            >
+                Run S Code
+            </button>
+            <button
+                id="saveButton"
+                class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105"
+            >
+                Save S File
+            </button>
+            <button
+                id="openButton"
+                class="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105"
+            >
+                Open S File
+            </button>
+            <!-- Hidden file input -->
+            <input type="file" id="fileInput" accept=".s1">
+        </div>
+
+        <!-- Output Section -->
+        <div class="w-full">
+            <label class="block text-lg font-semibold text-gray-700 mb-2">Output:</label>
+            <div
+                id="output"
+                class="w-full p-4 border-2 border-gray-300 rounded-lg bg-gray-900 text-green-400 font-mono text-sm overflow-auto"
+            >
+                <!-- Output will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sCodeInput = document.getElementById('sCodeInput');
+            const runButton = document.getElementById('runButton');
+            const saveButton = document.getElementById('saveButton');
+            const openButton = document.getElementById('openButton');
+            const fileInput = document.getElementById('fileInput');
+            const outputDiv = document.getElementById('output');
+
+            let currentExecutionPromise = Promise.resolve();
+            let variables = {};
+            let lastInput = "";
+
+            runButton.addEventListener('click', async () => {
+                const code = sCodeInput.value;
+                await currentExecutionPromise;
+                variables = {};
+                lastInput = "";
+                // Clear output before starting new execution
+                outputDiv.innerHTML = '';
+                currentExecutionPromise = runSCode(code);
+            });
+
+            saveButton.addEventListener('click', () => {
+                const defaultFileName = "program.s1"; // Changed to .s1
+                const desiredFileName = prompt("Enter filename (e.g., my_script.s1):", defaultFileName);
+
+                if (desiredFileName === null) {
+                    // Only display message if user explicitly cancels
+                    outputDiv.innerHTML += `<span class="info-message">Save cancelled.</span>\n`;
+                } else {
+                    const finalFileName = (desiredFileName.trim() === '')
+                        ? defaultFileName
+                        : (desiredFileName.endsWith('.s1') ? desiredFileName : desiredFileName + '.s1'); // Ensure .s1 extension
+
+                    triggerFileDownload(sCodeInput.value, finalFileName);
+                    // This message is for the user's information about the save action, not program output
+                    outputDiv.innerHTML += `<span class="info-message">Code saved as '${finalFileName}'.</span>\n`;
+                }
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            });
+
+            openButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    openSFile(file);
+                }
+                event.target.value = '';
+            });
+
+            /**
+             * Helper function to trigger a file download.
+             * @param {string} content - The content to save.
+             * @param {string} fileName - The desired filename.
+             */
+            function triggerFileDownload(content, fileName) {
+                const blob = new Blob([content], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                URL.revokeObjectURL(url);
+            }
+
+            /**
+             * Reads the content of a selected file, checks its extension,
+             * and loads/executes it if it's a valid .s1 file.
+             * @param {File} file - The file object to open.
+             */
+            function openSFile(file) {
+                const fileName = file.name;
+                const fileExtension = fileName.split('.').pop().toLowerCase();
+
+                if (fileExtension !== 's1') { // Check for .s1
+                    outputDiv.innerHTML = `<span class="error-message">Unsupported format: '${fileName}'. Please select a file with the '.s1' extension.</span>\n`;
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                    return;
+                }
+
+                const reader = new FileReader();
+
+                reader.onload = async (e) => {
+                    const fileContent = e.target.result;
+                    sCodeInput.value = fileContent;
+                    outputDiv.innerHTML += `<span class="info-message">File '${fileName}' loaded successfully. Running code...</span>\n`;
+                    outputDiv.scrollTop = outputDiv.scrollTop; // Scroll to show message
+                    await currentExecutionPromise;
+                    variables = {};
+                    lastInput = "";
+                    currentExecutionPromise = runSCode(fileContent);
+                };
+
+                reader.onerror = () => {
+                    outputDiv.innerHTML = `<span class="error-message">Error reading file: '${fileName}'.</span>\n`;
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                };
+
+                reader.readAsText(file);
+            }
+
+            /**
+             * Helper function to get user input asynchronously.
+             * Creates an input field and button, waits for submission.
+             * @param {string} promptMessage - The message to display to the user.
+             * @returns {Promise<string>} A promise that resolves with the user's input string.
+             */
+            function getUserInput(promptMessage) {
+                return new Promise(resolve => {
+                    const inputContainer = document.createElement('div');
+                    inputContainer.className = 'input-prompt-container';
+
+                    const promptSpan = document.createElement('span');
+                    promptSpan.className = 'text-blue-300';
+                    promptSpan.textContent = promptMessage + ' ';
+
+                    const inputField = document.createElement('input');
+                    inputField.type = 'text';
+                    inputField.placeholder = 'Type here...';
+                    inputField.className = 'flex-grow';
+
+                    const submitButton = document.createElement('button');
+                    submitButton.textContent = 'Submit';
+
+                    inputContainer.appendChild(promptSpan);
+                    inputContainer.appendChild(inputField);
+                    inputContainer.appendChild(submitButton);
+                    outputDiv.appendChild(inputContainer);
+
+                    inputField.focus();
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+
+                    const handleInput = () => {
+                        const inputValue = inputField.value;
+                        inputContainer.remove();
+                        lastInput = inputValue;
+                        resolve(inputValue);
+                    };
+
+                    submitButton.addEventListener('click', handleInput);
+                    inputField.addEventListener('keypress', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            handleInput();
+                        }
+                    });
+                });
+            }
+
+
+            /**
+             * Interprets and executes the given S language code.
+             * @param {string} code - The S language code to interpret and run.
+             */
+            async function runSCode(code) {
+                // Removed "Starting S Language execution..." message
+
+                const lines = code.split('\n');
+                let parsedCommands = [];
+                let hasErrors = false;
+
+                lines.forEach((line, index) => {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine === '') {
+                        return;
+                    }
+
+                    const lineNumber = index + 1;
+
+                    const writeInputRegex = /^writeinput\s+(.*)$/;
+                    const writeInputMatch = trimmedLine.match(writeInputRegex);
+
+                    const imgRegex = /^img\s+"([^"]+)"$/;
+                    const imgMatch = trimmedLine.match(imgRegex);
+
+                    const writeVarRegex = /^write\s+\(([a-zA-Z_][a-zA-Z0-9_]*)\)$/;
+                    const writeVarMatch = trimmedLine.match(writeVarRegex);
+
+                    const writeLiteralRegex = /^write\s+(.*)$/;
+                    const writeLiteralMatch = trimmedLine.match(writeLiteralRegex);
+
+                    const varAssignRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)\s+(.*)$/;
+                    const varAssignMatch = trimmedLine.match(varAssignRegex);
+
+
+                    if (writeInputMatch) {
+                        parsedCommands.push({ type: 'COMMAND', name: 'writeinput', args: [{ type: 'literal', value: writeInputMatch[1] }], line: lineNumber });
+                    } else if (imgMatch) {
+                        parsedCommands.push({ type: 'COMMAND', name: 'img', args: [{ type: 'literal', value: imgMatch[1] }], line: lineNumber });
+                    } else if (writeVarMatch) {
+                        parsedCommands.push({ type: 'COMMAND', name: 'write', args: [{ type: 'variable', name: writeVarMatch[1] }], line: lineNumber });
+                    } else if (writeLiteralMatch) {
+                        parsedCommands.push({ type: 'COMMAND', name: 'write', args: [{ type: 'literal', value: writeLiteralMatch[1] }], line: lineNumber });
+                    } else if (varAssignMatch) {
+                        const varName = varAssignMatch[1];
+                        let varValue = varAssignMatch[2];
+
+                        if (varValue.trim() === '(last_input)') {
+                             parsedCommands.push({ type: 'COMMAND', name: 'var_assign', varName: varName, valueType: 'last_input', line: lineNumber });
+                        } else {
+                            parsedCommands.push({ type: 'COMMAND', name: 'var_assign', varName: varName, valueType: 'literal', value: varValue, line: lineNumber });
+                        }
+                    }
+                    else {
+                        hasErrors = true;
+                        outputDiv.innerHTML += `<span class="error-message">Error on line ${lineNumber}: Invalid syntax or unrecognized command: "${trimmedLine}"</span>\n`;
+                    }
+                });
+
+                if (hasErrors) {
+                    outputDiv.innerHTML += '<span class="error-message">Execution halted due to errors in code.</span>\n';
+                    return;
+                }
+
+                if (parsedCommands.length === 0) {
+                    // Removed "No commands to execute." message
+                }
+
+                for (const command of parsedCommands) {
+                    if (command.name === 'write') {
+                        const arg = command.args[0];
+                        let contentToPrint = '';
+
+                        if (arg.type === 'literal') {
+                            contentToPrint = arg.value;
+                        } else if (arg.type === 'variable') {
+                            const varName = arg.name;
+                            if (variables.hasOwnProperty(varName)) {
+                                contentToPrint = variables[varName];
+                            } else {
+                                contentToPrint = `<span class="error-message">Error: Variable '${varName}' not found (Line ${command.line})</span>`;
+                            }
+                        }
+                        contentToPrint = contentToPrint.replace(/\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g, (match, varName) => {
+                            if (variables.hasOwnProperty(varName)) {
+                                return variables[varName];
+                            } else {
+                                return `<span class="error-message">(Error: Var '${varName}' not found)</span>`;
+                            }
+                        });
+
+
+                        outputDiv.innerHTML += contentToPrint + '\n';
+                    } else if (command.name === 'img') {
+                        const imageUrl = command.args[0].value;
+                        const imgElement = document.createElement('img');
+                        imgElement.src = imageUrl;
+                        imgElement.alt = `S Language Image (Line ${command.line})`;
+                        imgElement.onerror = function() {
+                            this.onerror = null;
+                            this.src = `https://placehold.co/150x100/FF0000/FFFFFF?text=Image+Load+Error`;
+                            this.alt = 'Image failed to load';
+                            outputDiv.innerHTML += `<span class="error-message">Error: Could not load image from "${imageUrl}" (Line ${command.line})</span>\n`;
+                        };
+                        outputDiv.appendChild(imgElement);
+                        outputDiv.innerHTML += '\n';
+                    } else if (command.name === 'writeinput') {
+                        const promptMessage = command.args[0].value;
+                        const userInput = await getUserInput(promptMessage);
+                        outputDiv.innerHTML += `<span class="text-blue-300">${promptMessage}</span> <span class="text-white">${userInput}</span>\n`;
+                    } else if (command.name === 'var_assign') {
+                        // Removed variable assignment info message
+                        if (command.valueType === 'last_input') {
+                            variables[command.varName] = lastInput;
+                        } else {
+                            variables[command.varName] = command.value;
+                        }
+                    }
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                }
+
+                // Removed "Execution Complete." message
+            }
+        });
+    </script>
+</body>
+</html>
+
