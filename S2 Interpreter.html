@@ -102,6 +102,35 @@
         #fileInput {
             display: none;
         }
+        .help-section {
+            background-color: #2d3748; /* Darker background for help section */
+            color: #e2e8f0; /* Light text for help section */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.875rem;
+        }
+        .help-section h3 {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+            color: #63b3ed; /* A blue shade for headings */
+        }
+        .help-section ul {
+            list-style-type: none; /* Remove default bullet points */
+            padding-left: 0;
+        }
+        .help-section li {
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+        .help-section code {
+            background-color: #4a5568; /* Darker background for inline code */
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            color: #a0aec0; /* Lighter gray for code text */
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4">
@@ -138,6 +167,12 @@
             >
                 Open S File
             </button>
+            <button
+                id="helpButton"
+                class="px-8 py-3 bg-yellow-600 text-white font-bold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105"
+            >
+                Help
+            </button>
             <!-- Hidden file input -->
             <input type="file" id="fileInput" accept=".s2">
         </div>
@@ -160,6 +195,7 @@
             const runButton = document.getElementById('runButton');
             const saveButton = document.getElementById('saveButton');
             const openButton = document.getElementById('openButton');
+            const helpButton = document.getElementById('helpButton');
             const fileInput = document.getElementById('fileInput');
             const outputDiv = document.getElementById('output');
 
@@ -167,13 +203,8 @@
             let variables = {};
             let lastInput = "";
 
-            // Set initial placeholder text for the textarea
-            sCodeInput.placeholder = `Example:
-writeinput What is your name?
-my_name ((input))
-write Hello, (my_name)!
-write ((input))
-img https://placehold.co/200x100/0000FF/FFFFFF?text=S+Language`;
+            // Removed the placeholder text from the textarea
+            sCodeInput.placeholder = "";
 
 
             runButton.addEventListener('click', async () => {
@@ -209,6 +240,11 @@ img https://placehold.co/200x100/0000FF/FFFFFF?text=S+Language`;
             openButton.addEventListener('click', () => {
                 // Programmatically click the hidden file input to open the file dialog
                 fileInput.click();
+            });
+
+            // Add event listener for the new help button
+            helpButton.addEventListener('click', () => {
+                displayHelp();
             });
 
             fileInput.addEventListener('change', (event) => {
@@ -318,6 +354,39 @@ img https://placehold.co/200x100/0000FF/FFFFFF?text=S+Language`;
                         }
                     });
                 });
+            }
+
+            /**
+             * Displays help information about S Language commands in the output area.
+             */
+            function displayHelp() {
+                outputDiv.innerHTML = ''; // Clear previous output
+                const helpContent = `
+                <div class="help-section">
+                    <h3>S Language Commands</h3>
+                    <ul>
+                        <li><code>write &lt;text&gt;</code>: Prints literal text to the output.
+                            <br>Example: <code>write Hello World!</code></li>
+                        <li><code>write (variable_name)</code>: Prints the value of a variable.
+                            <br>Example: <code>write Your name is (name_var)</code></li>
+                        <li><code>write ((input))</code>: Prints the value of the last user input received by <code>writeinput</code>.
+                            <br>Example: <code>write You just typed: ((input))</code></li>
+                        <li><code>writeinput &lt;prompt_text&gt;</code>: Displays a prompt and waits for user input.
+                            <br>Example: <code>writeinput Please enter your age:</code></li>
+                        <li><code>variable_name &lt;value&gt;</code>: Assigns a literal value to a variable.
+                            <br>Example: <code>my_age 30</code></li>
+                        <li><code>variable_name ((input))</code>: Assigns the value of the last user input to a variable.
+                            <br>Example: <code>user_response ((input))</code></li>
+                        <li><code>img "image_url"</code>: Displays an image from the given URL.
+                            <br>Example: <code>img "https://placehold.co/200x100/FF0000/FFFFFF?text=My+Image"</code></li>
+                        <li><code>$</code>: Anything after a dollar sign on a line is treated as a comment and ignored.
+                            <br>Example: <code>write Hello $ This is a comment</code></li>
+                    </ul>
+                    <p>Variable names must start with a letter or underscore, followed by letters, numbers, or underscores.</p>
+                </div>
+                `;
+                outputDiv.innerHTML = helpContent;
+                outputDiv.scrollTop = outputDiv.scrollHeight; // Scroll to the top of the help section
             }
 
             /**
