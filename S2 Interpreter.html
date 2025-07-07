@@ -167,32 +167,47 @@
             let variables = {};
             let lastInput = "";
 
+            // Set initial placeholder text for the textarea
+            sCodeInput.placeholder = `Example:
+writeinput What is your name?
+my_name ((input))
+write Hello, (my_name)!
+write ((input))
+img https://placehold.co/200x100/0000FF/FFFFFF?text=S+Language`;
+
+
             runButton.addEventListener('click', async () => {
                 const code = sCodeInput.value;
+                // Ensure previous execution completes before starting a new one
                 await currentExecutionPromise;
+                // Reset variables and lastInput for a fresh execution
                 variables = {};
                 lastInput = "";
                 // Clear output before starting new execution
                 outputDiv.innerHTML = '';
+                // Start a new execution and store its promise
                 currentExecutionPromise = runSCode(code);
             });
 
             saveButton.addEventListener('click', () => {
-                const defaultFileName = "program.s2"; // Changed to .s2
+                const defaultFileName = "program.s2"; // Default file extension
                 const desiredFileName = prompt("Enter filename (e.g., my_script.s2):", defaultFileName);
                 if (desiredFileName === null) {
-                    // Only display message if user explicitly cancels
+                    // Only display message if user explicitly cancels the prompt
                     outputDiv.innerHTML += `<span class="info-message">Save cancelled.</span>\n`;
                 } else {
-                    const finalFileName = (desiredFileName.trim() === '') ? defaultFileName : (desiredFileName.endsWith('.s2') ? desiredFileName : desiredFileName + '.s2'); // Ensure .s2 extension
+                    // Ensure the file name ends with .s2
+                    const finalFileName = (desiredFileName.trim() === '') ? defaultFileName : (desiredFileName.endsWith('.s2') ? desiredFileName : desiredFileName + '.s2');
                     triggerFileDownload(sCodeInput.value, finalFileName);
-                    // This message is for the user's information about the save action, not program output
+                    // Inform the user about the successful save
                     outputDiv.innerHTML += `<span class="info-message">Code saved as '${finalFileName}'.</span>\n`;
                 }
+                // Scroll to the bottom of the output
                 outputDiv.scrollTop = outputDiv.scrollHeight;
             });
 
             openButton.addEventListener('click', () => {
+                // Programmatically click the hidden file input to open the file dialog
                 fileInput.click();
             });
 
@@ -201,11 +216,13 @@
                 if (file) {
                     openSFile(file);
                 }
+                // Clear the file input value to ensure 'change' event fires again if the same file is selected
                 event.target.value = '';
             });
 
             /**
              * Helper function to trigger a file download.
+             * Creates a Blob from the content and a temporary anchor tag to initiate download.
              * @param {string} content - The content to save.
              * @param {string} fileName - The desired filename.
              */
@@ -215,10 +232,10 @@
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                document.body.appendChild(a); // Append to body to ensure it's in the DOM for click
+                a.click(); // Programmatically click the anchor
+                document.body.removeChild(a); // Clean up the temporary anchor
+                URL.revokeObjectURL(url); // Release the object URL
             }
 
             /**
@@ -229,7 +246,8 @@
             function openSFile(file) {
                 const fileName = file.name;
                 const fileExtension = fileName.split('.').pop().toLowerCase();
-                if (fileExtension !== 's2') { // Check for .s2
+                // Validate file extension
+                if (fileExtension !== 's2') {
                     outputDiv.innerHTML = `<span class="error-message">Unsupported format: '${fileName}'. Please select a file with the '.s2' extension.</span>\n`;
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                     return;
@@ -238,9 +256,10 @@
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     const fileContent = e.target.result;
-                    sCodeInput.value = fileContent;
+                    sCodeInput.value = fileContent; // Load content into the textarea
                     outputDiv.innerHTML += `<span class="info-message">File '${fileName}' loaded successfully. Running code...</span>\n`;
                     outputDiv.scrollTop = outputDiv.scrollTop; // Scroll to show message
+                    // Wait for any ongoing execution to finish, then reset and run the new code
                     await currentExecutionPromise;
                     variables = {};
                     lastInput = "";
@@ -250,12 +269,12 @@
                     outputDiv.innerHTML = `<span class="error-message">Error reading file: '${fileName}'.</span>\n`;
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                 };
-                reader.readAsText(file);
+                reader.readAsText(file); // Read the file as text
             }
 
             /**
              * Helper function to get user input asynchronously.
-             * Creates an input field and button, waits for submission.
+             * Creates an input field and button in the output area, waits for submission.
              * @param {string} promptMessage - The message to display to the user.
              * @returns {Promise<string>} A promise that resolves with the user's input string.
              */
@@ -271,7 +290,7 @@
                     const inputField = document.createElement('input');
                     inputField.type = 'text';
                     inputField.placeholder = 'Type here...';
-                    inputField.className = 'flex-grow';
+                    inputField.className = 'flex-grow'; // Tailwind class for flex item to grow
 
                     const submitButton = document.createElement('button');
                     submitButton.textContent = 'Submit';
@@ -281,20 +300,20 @@
                     inputContainer.appendChild(submitButton);
                     outputDiv.appendChild(inputContainer);
 
-                    inputField.focus();
-                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                    inputField.focus(); // Focus the input field for immediate typing
+                    outputDiv.scrollTop = outputDiv.scrollHeight; // Scroll to the bottom to show the input
 
                     const handleInput = () => {
                         const inputValue = inputField.value;
-                        inputContainer.remove();
-                        lastInput = inputValue;
-                        resolve(inputValue);
+                        inputContainer.remove(); // Remove the input elements after submission
+                        lastInput = inputValue; // Store the last input
+                        resolve(inputValue); // Resolve the promise with the input value
                     };
 
                     submitButton.addEventListener('click', handleInput);
                     inputField.addEventListener('keypress', (event) => {
                         if (event.key === 'Enter') {
-                            event.preventDefault();
+                            event.preventDefault(); // Prevent default form submission behavior
                             handleInput();
                         }
                     });
@@ -303,6 +322,7 @@
 
             /**
              * Interprets and executes the given S language code.
+             * Processes commands line by line, handling variables, input, and output.
              * @param {string} code - The S language code to interpret and run.
              */
             async function runSCode(code) {
@@ -310,6 +330,7 @@
                 let parsedCommands = [];
                 let hasErrors = false;
 
+                // --- Parsing Phase ---
                 lines.forEach((line, index) => {
                     // Implement comment functionality: anything after '$' is a comment
                     let trimmedLine = line.split('$')[0].trim();
@@ -320,22 +341,28 @@
 
                     const lineNumber = index + 1;
 
+                    // Regex for 'writeinput' command
                     const writeInputRegex = /^writeinput\s+(.*)$/;
                     const writeInputMatch = trimmedLine.match(writeInputRegex);
 
+                    // Regex for 'img' command
                     const imgRegex = /^img\s+"([^"]+)"$/;
                     const imgMatch = trimmedLine.match(imgRegex);
 
-                    // New regex for 'write (input)'
-                    const writeSpecialInputRegex = /^write\s+\(input\)$/;
-                    const writeSpecialInputMatch = trimmedLine.match(writeSpecialInputRegex);
+                    // UPDATED: Regex for 'write ((input))' - must be checked before general 'write' commands
+                    const writeSystemInputRegex = /^write\s+\(\(input\)\)$/;
+                    const writeSystemInputMatch = trimmedLine.match(writeSystemInputRegex);
 
+                    // Regex for 'write (variable)'
                     const writeVarRegex = /^write\s+\(([a-zA-Z_][a-zA-Z0-9_]*)\)$/;
                     const writeVarMatch = trimmedLine.match(writeVarRegex);
 
+                    // Regex for 'write literal'
                     const writeLiteralRegex = /^write\s+(.*)$/;
                     const writeLiteralMatch = trimmedLine.match(writeLiteralRegex);
 
+                    // UPDATED: Regex for variable assignment, now checks for '((input))'
+                    // This regex captures the variable name and the value part
                     const varAssignRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)\s+(.*)$/;
                     const varAssignMatch = trimmedLine.match(varAssignRegex);
 
@@ -344,35 +371,42 @@
                         parsedCommands.push({ type: 'COMMAND', name: 'writeinput', args: [{ type: 'literal', value: writeInputMatch[1] }], line: lineNumber });
                     } else if (imgMatch) {
                         parsedCommands.push({ type: 'COMMAND', name: 'img', args: [{ type: 'literal', value: imgMatch[1] }], line: lineNumber });
-                    } else if (writeSpecialInputMatch) { // Check for 'write (input)' first
-                        parsedCommands.push({ type: 'COMMAND', name: 'write', args: [{ type: 'special_input' }], line: lineNumber });
+                    } else if (writeSystemInputMatch) {
+                        // Handle 'write ((input))' as a special command
+                        parsedCommands.push({ type: 'COMMAND', name: 'write', args: [{ type: 'system_input' }], line: lineNumber });
                     } else if (writeVarMatch) {
                         parsedCommands.push({ type: 'COMMAND', name: 'write', args: [{ type: 'variable', name: writeVarMatch[1] }], line: lineNumber });
                     } else if (writeLiteralMatch) {
                         parsedCommands.push({ type: 'COMMAND', name: 'write', args: [{ type: 'literal', value: writeLiteralMatch[1] }], line: lineNumber });
                     } else if (varAssignMatch) {
                         const varName = varAssignMatch[1];
-                        let varValue = varAssignMatch[2];
-                        if (varValue.trim() === '(last_input)') {
-                            parsedCommands.push({ type: 'COMMAND', name: 'var_assign', varName: varName, valueType: 'last_input', line: lineNumber });
+                        let varValue = varAssignMatch[2].trim(); // Trim whitespace from the value part
+                        if (varValue === '((input))') {
+                            // Assign the special 'system_input' type
+                            parsedCommands.push({ type: 'COMMAND', name: 'var_assign', varName: varName, valueType: 'system_input', line: lineNumber });
                         } else {
+                            // Regular literal assignment
                             parsedCommands.push({ type: 'COMMAND', name: 'var_assign', varName: varName, valueType: 'literal', value: varValue, line: lineNumber });
                         }
                     } else {
+                        // If no command matches, it's an error
                         hasErrors = true;
                         outputDiv.innerHTML += `<span class="error-message">Error on line ${lineNumber}: Invalid syntax or unrecognized command: "${trimmedLine}"</span>\n`;
                     }
                 });
 
+                // If parsing errors occurred, halt execution
                 if (hasErrors) {
                     outputDiv.innerHTML += '<span class="error-message">Execution halted due to errors in code.</span>\n';
                     return;
                 }
 
                 if (parsedCommands.length === 0) {
-                    // No commands to execute.
+                    // No commands to execute, just return
+                    return;
                 }
 
+                // --- Execution Phase ---
                 for (const command of parsedCommands) {
                     if (command.name === 'write') {
                         const arg = command.args[0];
@@ -386,10 +420,12 @@
                             } else {
                                 contentToPrint = `<span class="error-message">Error: Variable '${varName}' not found (Line ${command.line})</span>`;
                             }
-                        } else if (arg.type === 'special_input') { // Handle 'write (input)'
+                        } else if (arg.type === 'system_input') {
+                            // Handle 'write ((input))' by printing the last stored input
                             contentToPrint = lastInput;
                         }
-                        // Replace variable placeholders within the string
+                        // Replace variable placeholders within the string (e.g., "Hello, (name)!")
+                        // This regex specifically looks for (variable_name) and replaces it with the variable's value
                         contentToPrint = contentToPrint.replace(/\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g, (match, varName) => {
                             if (variables.hasOwnProperty(varName)) {
                                 return variables[varName];
@@ -403,25 +439,31 @@
                         const imgElement = document.createElement('img');
                         imgElement.src = imageUrl;
                         imgElement.alt = `S Language Image (Line ${command.line})`;
+                        // Fallback for image loading errors
                         imgElement.onerror = function() {
                             this.onerror = null; // Prevent infinite loops if fallback also fails
-                            this.src = `https://placehold.co/150x100/FF0000/FFFFFF?text=Image+Load+Error`; // Fallback image
+                            this.src = `https://placehold.co/150x100/FF0000/FFFFFF?text=Image+Load+Error`; // Generic fallback image
                             this.alt = 'Image failed to load';
                             outputDiv.innerHTML += `<span class="error-message">Error: Could not load image from "${imageUrl}" (Line ${command.line})</span>\n`;
                         };
                         outputDiv.appendChild(imgElement);
-                        outputDiv.innerHTML += '\n';
+                        outputDiv.innerHTML += '\n'; // Add a newline after the image for better spacing
                     } else if (command.name === 'writeinput') {
                         const promptMessage = command.args[0].value;
+                        // Await user input
                         const userInput = await getUserInput(promptMessage);
+                        // Display the prompt and the user's input in the output
                         outputDiv.innerHTML += `<span class="text-blue-300">${promptMessage}</span> <span class="text-white">${userInput}</span>\n`;
                     } else if (command.name === 'var_assign') {
-                        if (command.valueType === 'last_input') {
+                        if (command.valueType === 'system_input') {
+                            // Assign the value of the last user input to the variable
                             variables[command.varName] = lastInput;
                         } else {
+                            // Assign a literal value to the variable
                             variables[command.varName] = command.value;
                         }
                     }
+                    // Always scroll to the bottom after processing each command
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                 }
             }
