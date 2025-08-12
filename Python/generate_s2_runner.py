@@ -10,7 +10,7 @@ def create_python_file_with_dynamic_s2_fallback():
     print("--- Python Script Generator for S2 Runner ---")
 
     # 1. Ask the user for the S2 file name to be embedded as a fallback
-    s2_filename_to_embed = input("Enter the default S2 filename for the *generated* Python script (e.g., my_program.s2): ").strip()
+    s2_filename_to_embed = input("Enter the name of the S2 file you want to make a python runner of. NOTE: The S2 file must be in the same directory as the directory of this generator.").strip()
     if not s2_filename_to_embed:
         s2_filename_to_embed = "code.s2" # Default fallback if user enters nothing
         print(f"No S2 filename entered. Using default: '{s2_filename_to_embed}' for the generated script.")
@@ -60,3 +60,4 @@ def create_python_file_with_dynamic_s2_fallback():
 
 if __name__ == "__main__":
     create_python_file_with_dynamic_s2_fallback()
+
