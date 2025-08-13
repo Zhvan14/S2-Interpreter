@@ -1,5 +1,6 @@
 import re
 import sys
+import os
 
 def evaluate_expression(expr_string, variables, last_input):
     expr_string = expr_string.strip()
@@ -46,10 +47,8 @@ def parse_line(line):
     line = line.split('$')[0].strip()
     if not line:
         return None
-    # end
     if line.strip().lower() == "end":
         return ("end",)
-    # if ... then
     m = re.match(r'^if\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"([^"]*)"\s*then$', line)
     if m:
         return ('if', m.group(1), m.group(2))
@@ -83,6 +82,20 @@ def parse_line(line):
             return ('var_assign_literal', var, val)
     return ('error', line)
 
+def get_input(prompt):
+    # Try normal input()
+    try:
+        if sys.stdin.isatty():
+            return input(prompt + " ")
+        # If stdin is redirected, try /dev/tty (Unix) for interactive input
+        else:
+            with open('/dev/tty', 'r') as tty:
+                print(prompt, end=' ', flush=True)
+                return tty.readline().rstrip('\n')
+    except Exception:
+        print("\nError: No interactive input possible (no terminal found). Exiting.")
+        sys.exit(1)
+
 def run_s_code(lines):
     variables = {}
     last_input = ""
@@ -96,7 +109,6 @@ def run_s_code(lines):
             idx += 1
             continue
 
-        # Check if we are in a skipping state (for nested if blocks)
         if skip_stack:
             if parsed[0] == "if":
                 skip_stack.append("if")
@@ -109,10 +121,8 @@ def run_s_code(lines):
             if parsed[0] == 'if':
                 varname, value = parsed[1], parsed[2]
                 if variables.get(varname, None) == value:
-                    # Condition true: execute block
                     idx += 1
                 else:
-                    # Condition false: skip until matching end
                     skip_stack.append("if")
                     idx += 1
                 continue
@@ -121,7 +131,7 @@ def run_s_code(lines):
                 continue
             elif parsed[0] == 'writeinput':
                 prompt = parsed[1]
-                last_input = input(prompt + " ")
+                last_input = get_input(prompt)
             elif parsed[0] == 'img':
                 url = parsed[1]
                 print(f"[Image: {url}]")
@@ -183,4 +193,18 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error: {e}")
     else:
-        print("Please provide a .s2 file to run. Use --help-s2 for language help.")
+        print("Enter your S2 program, finish with an empty line:")
+        code_lines = []
+        while True:
+            try:
+                line = input()
+                if line.strip() == "":
+                    break
+                code_lines.append(line)
+            except EOFError:
+                break
+        if code_lines:
+            run_s_code(code_lines)
+        else:
+            print("No program entered. Exiting.")
+
