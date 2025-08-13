@@ -29,18 +29,20 @@ def evaluate_expression(expr_string, variables, last_input):
 def display_help():
     print("""
 S Language Commands:
-  write <text>                Prints literal text.
-  write (variable_name)       Prints the value of a variable.
-  write ((input))             Prints last input value.
-  write (<expression>)        Prints result of arithmetic or string expr.
-                              Operators: +, -, *, /, ++ (concatenation)
-  writeinput <prompt>         Prompts for user input.
-  variable_name <value>       Assigns a literal value.
-  variable_name ((input))     Assigns last input to variable.
-  variable_name (<expr>)      Assigns expr result to variable.
-  img "image_url"             Prints image URL (CLI only).
+  func <function_name>         Function definition. Ends with end. Call with <function_name> on a line.
+  <function_name>              Calls a function previously defined.
+  write <text>                 Prints literal text.
+  write (variable_name)        Prints the value of a variable.
+  write ((input))              Prints last input value.
+  write (<expression>)         Prints result of arithmetic or string expr.
+                               Operators: +, -, *, /, ++ (concatenation)
+  writeinput <prompt>          Prompts for user input.
+  variable_name <value>        Assigns a literal value.
+  variable_name ((input))      Assigns last input to variable.
+  variable_name (<expr>)       Assigns expr result to variable.
+  img "image_url"              Prints image URL (CLI only).
   if var = "value" then ... end   Conditional block, executes code inside if var matches value.
-  $                          Comments after $ are ignored.
+  $                            Comments after $ are ignored.
 """)
 
 def parse_line(line):
@@ -49,6 +51,12 @@ def parse_line(line):
         return None
     if line.strip().lower() == "end":
         return ("end",)
+    m = re.match(r'^func\s+<([a-zA-Z_][a-zA-Z0-9_]*)>$', line)
+    if m:
+        return ('func_def', m.group(1))
+    m = re.match(r'^<([a-zA-Z_][a-zA-Z0-9_]*)>$', line)
+    if m:
+        return ('call_func', m.group(1))
     m = re.match(r'^if\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"([^"]*)"\s*then$', line)
     if m:
         return ('if', m.group(1), m.group(2))
@@ -83,11 +91,9 @@ def parse_line(line):
     return ('error', line)
 
 def get_input(prompt):
-    # Try normal input()
     try:
         if sys.stdin.isatty():
             return input(prompt + " ")
-        # If stdin is redirected, try /dev/tty (Unix) for interactive input
         else:
             with open('/dev/tty', 'r') as tty:
                 print(prompt, end=' ', flush=True)
@@ -96,17 +102,55 @@ def get_input(prompt):
         print("\nError: No interactive input possible (no terminal found). Exiting.")
         sys.exit(1)
 
-def run_s_code(lines):
-    variables = {}
-    last_input = ""
+def run_s_code(lines, functions=None, parent_vars=None, parent_last_input=None):
+    variables = dict(parent_vars) if parent_vars else {}
+    last_input = parent_last_input if parent_last_input is not None else ""
     idx = 0
     skip_stack = []
+    functions = functions if functions is not None else {}
+
+    # --- Function Detection Pass ---
+    def scan_functions(lines):
+        func_map = {}
+        idx = 0
+        while idx < len(lines):
+            line = lines[idx]
+            parsed = parse_line(line)
+            if parsed and parsed[0] == "func_def":
+                funcname = parsed[1]
+                fstart = idx + 1
+                fend = fstart
+                depth = 1
+                while fend < len(lines):
+                    p2 = parse_line(lines[fend])
+                    if p2 and p2[0] == "func_def":
+                        depth += 1
+                    elif p2 and p2[0] == "end":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    fend += 1
+                func_map[funcname] = (fstart, fend)
+                idx = fend + 1
+            else:
+                idx += 1
+        return func_map
+
+    if parent_vars is None:
+        functions.update(scan_functions(lines))
 
     while idx < len(lines):
         line = lines[idx]
         parsed = parse_line(line)
         if not parsed:
             idx += 1
+            continue
+
+        # Skip function bodies during top-level execution
+        if parsed[0] == "func_def":
+            funcname = parsed[1]
+            fstart, fend = functions[funcname]
+            idx = fend + 1
             continue
 
         if skip_stack:
@@ -118,7 +162,14 @@ def run_s_code(lines):
             continue
 
         try:
-            if parsed[0] == 'if':
+            if parsed[0] == 'call_func':
+                fname = parsed[1]
+                if fname in functions:
+                    fstart, fend = functions[fname]
+                    run_s_code(lines[fstart:fend], functions, variables, last_input)
+                else:
+                    print(f"Error: Function <{fname}> not found (Line {idx+1})")
+            elif parsed[0] == 'if':
                 varname, value = parsed[1], parsed[2]
                 if variables.get(varname, None) == value:
                     idx += 1
@@ -207,4 +258,3 @@ if __name__ == "__main__":
             run_s_code(code_lines)
         else:
             print("No program entered. Exiting.")
-
