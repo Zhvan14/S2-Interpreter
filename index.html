@@ -2,27 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>S Language Interpreter</title>
+    <title>S2 Language Interpreter with Functions</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
             background-color: #f0f4f8;
         }
         #app-container {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem;
-            max-width: 90%;
-            margin: 0 auto;
-            width: 100%;
+            max-width: 700px;
+            margin: 2rem auto;
+            background: #fff;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,.13);
         }
         textarea {
             resize: vertical;
@@ -30,16 +23,15 @@
         }
         #output {
             background-color: #1f2937;
-            color: #d1d5db;
+            color: #c2f0c2;
             font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-            font-size: 0.875rem;
+            font-size: 0.95rem;
             padding: 1rem;
             border-radius: 0.5rem;
             border: 1px solid #374151;
             overflow-x: auto;
             min-height: 150px;
             max-height: 400px;
-            color: #c2f0c2;
         }
         #output img {
             max-width: 100%;
@@ -129,379 +121,290 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 p-4">
-    <div id="app-container" class="bg-white shadow-lg rounded-xl p-6 md:p-8 flex flex-col gap-6">
-        <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-4">S Language Interpreter</h1>
-        <div class="w-full">
-            <label for="sCodeInput" class="block text-lg font-semibold text-gray-700 mb-2">Write your S code here:</label>
-            <textarea
-                id="sCodeInput"
-                class="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 bg-gray-50 transition duration-200 ease-in-out"
-                placeholder=""
-            ></textarea>
-        </div>
-        <div class="button-group">
-            <button id="runButton" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300">
-                Run S Code
-            </button>
-            <button id="saveButton" class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-300">
-                Save S File
-            </button>
-            <button id="openButton" class="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-300">
-                Open S File
-            </button>
-            <button id="helpButton" class="px-8 py-3 bg-yellow-600 text-white font-bold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition duration-300">
-                Help
-            </button>
-            <input type="file" id="fileInput" accept=".s2">
-        </div>
-        <div class="w-full">
-            <label class="block text-lg font-semibold text-gray-700 mb-2">Output:</label>
-            <div id="output" class="w-full p-4 border-2 border-gray-300 rounded-lg bg-gray-900 text-green-400 font-mono text-sm overflow-auto"></div>
-        </div>
+<body>
+<div id="app-container">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-4">S2 Language Interpreter</h1>
+    <label for="sCodeInput" class="block text-lg font-semibold text-gray-700 mb-2">Your S2 code:</label>
+    <textarea id="sCodeInput" class="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 bg-gray-50 transition duration-200 ease-in-out"></textarea>
+    <div class="flex gap-3 justify-center mt-6 mb-4 button-group">
+        <button id="runButton" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition">Run S2 Code</button>
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const sCodeInput = document.getElementById('sCodeInput');
-            const runButton = document.getElementById('runButton');
-            const saveButton = document.getElementById('saveButton');
-            const openButton = document.getElementById('openButton');
-            const helpButton = document.getElementById('helpButton');
-            const fileInput = document.getElementById('fileInput');
-            const outputDiv = document.getElementById('output');
+    <label class="block text-lg font-semibold text-gray-700 mb-2">Output:</label>
+    <div id="output"></div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const sCodeInput = document.getElementById('sCodeInput');
+    const runButton = document.getElementById('runButton');
+    const outputDiv = document.getElementById('output');
 
-            let currentExecutionPromise = Promise.resolve();
-
-            sCodeInput.placeholder = `Example:
-var1 hello
-var2 hi
-if var1 = var2 then
-write hi!
+    sCodeInput.placeholder =
+`func <hello>
+write hi
 end
-write This always prints.
 
-if var1 = "hello" then
-write literal hello branch!
-end
+<hello>
 `;
 
-            runButton.addEventListener('click', async () => {
-                const code = sCodeInput.value;
-                await currentExecutionPromise;
-                outputDiv.innerHTML = '';
-                currentExecutionPromise = runSCode(code);
-            });
+    runButton.addEventListener('click', async () => {
+        outputDiv.innerHTML = '';
+        await runSCode(sCodeInput.value);
+    });
 
-            saveButton.addEventListener('click', () => {
-                const defaultFileName = "program.s2";
-                const desiredFileName = prompt("Enter filename (e.g., my_script.s2):", defaultFileName);
-                if (desiredFileName === null) {
-                    outputDiv.innerHTML += `<span class="info-message">Save cancelled.</span>\n`;
-                } else {
-                    const finalFileName = (desiredFileName.trim() === '') ? defaultFileName : (desiredFileName.endsWith('.s2') ? desiredFileName : desiredFileName + '.s2');
-                    triggerFileDownload(sCodeInput.value, finalFileName);
-                    outputDiv.innerHTML += `<span class="info-message">Code saved as '${finalFileName}'.</span>\n`;
-                }
-                outputDiv.scrollTop = outputDiv.scrollHeight;
-            });
-
-            openButton.addEventListener('click', () => {
-                fileInput.click();
-            });
-
-            helpButton.addEventListener('click', () => {
-                displayHelp();
-            });
-
-            fileInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    openSFile(file);
-                }
-                event.target.value = '';
-            });
-
-            function triggerFileDownload(content, fileName) {
-                const blob = new Blob([content], { type: 'application/octet-stream' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
-
-            function openSFile(file) {
-                const fileName = file.name;
-                const fileExtension = fileName.split('.').pop().toLowerCase();
-                if (fileExtension !== 's2') {
-                    outputDiv.innerHTML = `<span class="error-message">Unsupported format: '${fileName}'. Please select a file with the '.s2' extension.</span>\n`;
-                    outputDiv.scrollTop = outputDiv.scrollHeight;
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const fileContent = e.target.result;
-                    sCodeInput.value = fileContent;
-                    outputDiv.innerHTML += `<span class="info-message">File '${fileName}' loaded successfully. Running code...</span>\n`;
-                    outputDiv.scrollTop = outputDiv.scrollTop;
-                    await currentExecutionPromise;
-                    currentExecutionPromise = runSCode(fileContent);
-                };
-                reader.onerror = () => {
-                    outputDiv.innerHTML = `<span class="error-message">Error reading file: '${fileName}'.</span>\n`;
-                    outputDiv.scrollTop = outputDiv.scrollHeight;
-                };
-                reader.readAsText(file);
-            }
-
-            function getUserInput(promptMessage) {
-                return new Promise(resolve => {
-                    const inputContainer = document.createElement('div');
-                    inputContainer.className = 'input-prompt-container';
-                    const promptSpan = document.createElement('span');
-                    promptSpan.className = 'text-blue-300';
-                    promptSpan.textContent = promptMessage + ' ';
-                    const inputField = document.createElement('input');
-                    inputField.type = 'text';
-                    inputField.placeholder = 'Type here...';
-                    const submitButton = document.createElement('button');
-                    submitButton.textContent = 'Submit';
-                    inputContainer.appendChild(promptSpan);
-                    inputContainer.appendChild(inputField);
-                    inputContainer.appendChild(submitButton);
-                    outputDiv.appendChild(inputContainer);
-                    inputField.focus();
-                    outputDiv.scrollTop = outputDiv.scrollHeight;
-
-                    const handleInput = () => {
-                        const inputValue = inputField.value;
-                        inputContainer.remove();
-                        resolve(inputValue);
-                    };
-                    submitButton.addEventListener('click', handleInput);
-                    inputField.addEventListener('keypress', (event) => {
-                        if (event.key === 'Enter') {
-                            event.preventDefault();
-                            handleInput();
-                        }
-                    });
-                });
-            }
-
-            function evaluateExpression(exprString, variables, lastInput) {
-                exprString = exprString.trim();
-                exprString = exprString.replace(/\(\(input\)\)/g, () => String(lastInput));
-                let processedExpr = exprString.replace(/\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g, (match, varName) => {
-                    if (variables.hasOwnProperty(varName)) {
-                        return String(variables[varName]);
-                    } else {
-                        throw new Error(`Undefined variable '${varName}'`);
-                    }
-                });
-                if (processedExpr.includes("++")) {
-                    const parts = processedExpr.split("++").map(part => part.trim());
-                    return parts.join('');
-                }
-                try {
-                    if (!/^[0-9+\-*/().\s]+$/.test(processedExpr)) {
-                        throw new Error("Invalid characters or syntax in arithmetic expression.");
-                    }
-                    const result = new Function('return ' + processedExpr)();
-                    if (typeof result === 'number' && !isNaN(result)) {
-                        return result;
-                    } else {
-                        throw new Error("Expression did not evaluate to a valid number.");
-                    }
-                } catch (e) {
-                    if (e instanceof SyntaxError) {
-                        throw new Error(`Syntax error in expression: ${e.message}`);
-                    }
-                    throw new Error(`Could not evaluate expression: ${e.message}`);
-                }
-            }
-
-            function displayHelp() {
-                outputDiv.innerHTML = '';
-                const helpContent = `
-                <div class="help-section">
-                    <h3>S Language Commands</h3>
-                    <ul>
-                        <li><code>write &lt;text&gt;</code>: Prints literal text to the output.</li>
-                        <li><code>write (variable_name)</code>: Prints the value of a variable.</li>
-                        <li><code>write ((input))</code>: Prints the value of the last user input received by <code>writeinput</code>.</li>
-                        <li><code>write (&lt;expression&gt;)</code>: Evaluates and prints the result of an arithmetic or string expression.</li>
-                        <li><code>writeinput &lt;prompt_text&gt;</code>: Displays a prompt and waits for user input.</li>
-                        <li><code>variable_name &lt;value&gt;</code>: Assigns a literal value to a variable.</li>
-                        <li><code>variable_name ((input))</code>: Assigns the value of the last user input to a variable.</li>
-                        <li><code>variable_name (&lt;expression&gt;)</code>: Assigns the result of an expression to a variable.</li>
-                        <li><code>img "image_url"</code>: Displays an image from the given URL.</li>
-                        <li><code>if var = "literal" then ... end</code>: Conditional block, code only runs if <code>var</code> equals <code>literal</code>.</li>
-                        <li><code>if var1 = var2 then ... end</code>: Conditional block, code only runs if the variables' values are equal.</li>
-                        <li><code>$</code>: Anything after a dollar sign is a comment and ignored.</li>
-                    </ul>
-                </div>
-                `;
-                outputDiv.innerHTML = helpContent;
-                outputDiv.scrollTop = outputDiv.scrollHeight;
-            }
-
-            // ---- IF BLOCK SUPPORT FOR var = "literal" and var = var2 ----
-            async function runSCode(code) {
-                const lines = code.split('\n');
-                let variables = {};
-                let lastInput = "";
-                outputDiv.innerHTML = '';
-                let idx = 0;
-                let skipStack = [];
-
-                // Supports if var = "literal" then OR if var1 = var2 then
-                function parseIfLine(line) {
-                    let m = line.match(/^if\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(?:"([^"]*)"|([a-zA-Z_][a-zA-Z0-9_]*))\s*then$/);
-                    if (m) {
-                        if (m[2] !== undefined) {
-                            return { left: m[1], right: m[2], isVar: false };
-                        } else {
-                            return { left: m[1], right: m[3], isVar: true };
-                        }
-                    }
-                    return null;
-                }
-
-                const rawLines = lines.map(l => l.split('$')[0].trim());
-
-                while (idx < rawLines.length) {
-                    let line = rawLines[idx];
-                    if (!line) { idx++; continue; }
-
-                    // Block IF skipping
-                    if (skipStack.length > 0) {
-                        if (parseIfLine(line)) skipStack.push('if');
-                        else if (line.toLowerCase() === "end") skipStack.pop();
-                        idx++;
-                        continue;
-                    }
-
-                    // Handle IF
-                    const ifMatch = parseIfLine(line);
-                    if (ifMatch) {
-                        let condVal = variables[ifMatch.left];
-                        let condAgainst = ifMatch.isVar ? variables[ifMatch.right] : ifMatch.right;
-                        if (condVal === condAgainst) {
-                            idx++;
-                            continue;
-                        } else {
-                            skipStack.push('if');
-                            idx++;
-                            continue;
-                        }
-                    } else if (line.toLowerCase() === "end") {
-                        idx++;
-                        continue;
-                    }
-
-                    // --- S2 Commands ---
-                    // writeinput
-                    const writeInputRegex = /^writeinput\s+(.*)$/;
-                    const writeInputMatch = line.match(writeInputRegex);
-                    if (writeInputMatch) {
-                        const promptMessage = writeInputMatch[1];
-                        lastInput = await getUserInput(promptMessage);
-                        outputDiv.innerHTML += `<span class="text-blue-300">${promptMessage}</span> <span class="text-white">${lastInput}</span>\n`;
-                        idx++;
-                        continue;
-                    }
-                    // img
-                    const imgRegex = /^img\s+"([^"]+)"$/;
-                    const imgMatch = line.match(imgRegex);
-                    if (imgMatch) {
-                        const imageUrl = imgMatch[1];
-                        const imgElement = document.createElement('img');
-                        imgElement.src = imageUrl;
-                        imgElement.alt = `S Language Image`;
-                        imgElement.onerror = function() {
-                            this.onerror = null;
-                            this.src = `https://placehold.co/150x100/FF0000/FFFFFF?text=Image+Load+Error`;
-                            this.alt = 'Image failed to load';
-                            outputDiv.innerHTML += `<span class="error-message">Error: Could not load image from "${imageUrl}"</span>\n`;
-                        };
-                        outputDiv.appendChild(imgElement);
-                        outputDiv.innerHTML += '\n';
-                        idx++;
-                        continue;
-                    }
-                    // write ((input))
-                    const writeSystemInputRegex = /^write\s+\(\(input\)\)$/;
-                    const writeSystemInputMatch = line.match(writeSystemInputRegex);
-                    if (writeSystemInputMatch) {
-                        outputDiv.innerHTML += lastInput + '\n';
-                        idx++;
-                        continue;
-                    }
-                    // write (expression or variable)
-                    const writeExpressionOrVarRegex = /^write\s+\((.+)\)$/;
-                    const writeExpressionOrVarMatch = line.match(writeExpressionOrVarRegex);
-                    if (writeExpressionOrVarMatch) {
-                        const content = writeExpressionOrVarMatch[1].trim();
-                        const isVariableOnly = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(content);
-                        if (isVariableOnly) {
-                            if (variables.hasOwnProperty(content)) {
-                                outputDiv.innerHTML += variables[content] + '\n';
-                            } else {
-                                outputDiv.innerHTML += `<span class="error-message">Error: Variable '${content}' not found (Line ${idx+1})</span>\n`;
-                            }
-                        } else {
-                            try {
-                                outputDiv.innerHTML += evaluateExpression(content, variables, lastInput) + '\n';
-                            } catch (e) {
-                                outputDiv.innerHTML += `<span class="error-message">Error: ${e.message} (Line ${idx+1})</span>\n`;
-                            }
-                        }
-                        idx++;
-                        continue;
-                    }
-                    // write literal
-                    const writeLiteralRegex = /^write\s+(.*)$/;
-                    const writeLiteralMatch = line.match(writeLiteralRegex);
-                    if (writeLiteralMatch) {
-                        let contentToPrint = writeLiteralMatch[1];
-                        contentToPrint = contentToPrint.replace(/\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g, (match, varName) => {
-                            if (variables.hasOwnProperty(varName)) return variables[varName];
-                            else return `<span class="error-message">(Error: Var '${varName}' not found)</span>`;
-                        });
-                        outputDiv.innerHTML += contentToPrint + '\n';
-                        idx++;
-                        continue;
-                    }
-                    // variable assignment
-                    const varAssignRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)\s+(.*)$/;
-                    const varAssignMatch = line.match(varAssignRegex);
-                    if (varAssignMatch) {
-                        const varName = varAssignMatch[1];
-                        let varValue = varAssignMatch[2].trim();
-                        const varAssignExpressionMatch = varValue.match(/^\((.+)\)$/);
-                        if (varValue === '((input))') {
-                            variables[varName] = lastInput;
-                        } else if (varAssignExpressionMatch) {
-                            try {
-                                variables[varName] = evaluateExpression(varAssignExpressionMatch[1].trim(), variables, lastInput);
-                            } catch (e) {
-                                outputDiv.innerHTML += `<span class="error-message">Error assigning to '${varName}': ${e.message} (Line ${idx+1})</span>\n`;
-                            }
-                        } else {
-                            variables[varName] = varValue;
-                        }
-                        idx++;
-                        continue;
-                    }
-                    // error
-                    outputDiv.innerHTML += `<span class="error-message">Error on line ${idx+1}: Invalid syntax or unrecognized command: "${line}"</span>\n`;
-                    idx++;
-                }
+    function evaluateExpression(exprString, variables, lastInput) {
+        exprString = exprString.trim();
+        exprString = exprString.replace(/\(\(input\)\)/g, () => String(lastInput));
+        let processedExpr = exprString.replace(/\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g, (match, varName) => {
+            if (variables.hasOwnProperty(varName)) {
+                return String(variables[varName]);
+            } else {
+                throw new Error(`Undefined variable '${varName}'`);
             }
         });
-    </script>
+        if (processedExpr.includes("++")) {
+            const parts = processedExpr.split("++").map(part => part.trim());
+            return parts.join('');
+        }
+        try {
+            if (!/^[0-9+\-*/().\s]+$/.test(processedExpr)) {
+                throw new Error("Invalid characters or syntax in arithmetic expression.");
+            }
+            const result = new Function('return ' + processedExpr)();
+            if (typeof result === 'number' && !isNaN(result)) {
+                return result;
+            } else {
+                throw new Error("Expression did not evaluate to a valid number.");
+            }
+        } catch (e) {
+            throw new Error(`Could not evaluate expression: ${e.message}`);
+        }
+    }
+
+    function getUserInput(promptMessage) {
+        return new Promise(resolve => {
+            const inputContainer = document.createElement('div');
+            inputContainer.className = 'input-prompt-container';
+            const promptSpan = document.createElement('span');
+            promptSpan.className = 'text-blue-300';
+            promptSpan.textContent = promptMessage + ' ';
+            const inputField = document.createElement('input');
+            inputField.type = 'text';
+            inputField.placeholder = 'Type here...';
+            const submitButton = document.createElement('button');
+            submitButton.textContent = 'Submit';
+            inputContainer.appendChild(promptSpan);
+            inputContainer.appendChild(inputField);
+            inputContainer.appendChild(submitButton);
+            outputDiv.appendChild(inputContainer);
+            inputField.focus();
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+
+            const handleInput = () => {
+                const inputValue = inputField.value;
+                inputContainer.remove();
+                resolve(inputValue);
+            };
+            submitButton.addEventListener('click', handleInput);
+            inputField.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleInput();
+                }
+            });
+        });
+    }
+
+    // --- FUNCTION SUPPORT ---
+    // scan for functions: returns { fname: {start, end} }
+    function scanFunctions(lines) {
+        const funcMap = {};
+        let i = 0;
+        while (i < lines.length) {
+            let line = lines[i].split('$')[0].trim();
+            let m = line.match(/^func\s+<([a-zA-Z_][a-zA-Z0-9_]*)>$/);
+            if (m) {
+                const fname = m[1];
+                let start = i + 1;
+                let depth = 1;
+                let end = start;
+                while (end < lines.length) {
+                    let check = lines[end].split('$')[0].trim();
+                    if (/^func\s+<([a-zA-Z_][a-zA-Z0-9_]*)>$/.test(check)) depth++;
+                    if (/^end$/.test(check)) {
+                        depth--;
+                        if (depth === 0) break;
+                    }
+                    end++;
+                }
+                funcMap[fname] = {start, end};
+                i = end + 1;
+            } else {
+                i++;
+            }
+        }
+        return funcMap;
+    }
+
+    async function runSCode(code) {
+        const lines = code.split('\n');
+        let variables = {};
+        let lastInput = "";
+        let idx = 0;
+        let skipStack = [];
+
+        const functions = scanFunctions(lines);
+
+        async function execBlock(start, end) {
+            let idx = start;
+            let skipStack = [];
+            while (idx < end) {
+                let line = lines[idx].split('$')[0].trim();
+                if (!line) { idx++; continue; }
+
+                // skip function bodies inside block
+                let mdef = line.match(/^func\s+<([a-zA-Z_][a-zA-Z0-9_]*)>$/);
+                if (mdef) {
+                    idx = functions[mdef[1]].end + 1;
+                    continue;
+                }
+                // function call
+                let mcall = line.match(/^<([a-zA-Z_][a-zA-Z0-9_]*)>$/);
+                if (mcall) {
+                    let fname = mcall[1];
+                    if (functions.hasOwnProperty(fname)) {
+                        await execBlock(functions[fname].start, functions[fname].end);
+                    } else {
+                        outputDiv.innerHTML += `<span class="error-message">Error: Function <${fname}> not found (Line ${idx+1})</span>\n`;
+                    }
+                    idx++;
+                    continue;
+                }
+
+                // IF STATEMENT SUPPORT
+                let ifMatch = line.match(/^if\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(?:"([^"]*)"|([a-zA-Z_][a-zA-Z0-9_]*))\s*then$/);
+                if (skipStack.length > 0) {
+                    if (ifMatch) skipStack.push('if');
+                    else if (line.toLowerCase() === "end") skipStack.pop();
+                    idx++;
+                    continue;
+                }
+                if (ifMatch) {
+                    let condVal = variables[ifMatch[1]];
+                    let condAgainst = ifMatch[2] !== undefined ? ifMatch[2] : variables[ifMatch[3]];
+                    if (condVal === condAgainst) {
+                        idx++;
+                        continue;
+                    } else {
+                        skipStack.push('if');
+                        idx++;
+                        continue;
+                    }
+                } else if (line.toLowerCase() === "end") {
+                    idx++;
+                    continue;
+                }
+
+                // writeinput
+                const writeInputRegex = /^writeinput\s+(.*)$/;
+                const writeInputMatch = line.match(writeInputRegex);
+                if (writeInputMatch) {
+                    const promptMessage = writeInputMatch[1];
+                    lastInput = await getUserInput(promptMessage);
+                    outputDiv.innerHTML += `<span class="text-blue-300">${promptMessage}</span> <span class="text-white">${lastInput}</span>\n`;
+                    idx++;
+                    continue;
+                }
+                // img
+                const imgRegex = /^img\s+"([^"]+)"$/;
+                const imgMatch = line.match(imgRegex);
+                if (imgMatch) {
+                    const imageUrl = imgMatch[1];
+                    const imgElement = document.createElement('img');
+                    imgElement.src = imageUrl;
+                    imgElement.alt = `S Language Image`;
+                    imgElement.onerror = function() {
+                        this.onerror = null;
+                        this.src = `https://placehold.co/150x100/FF0000/FFFFFF?text=Image+Load+Error`;
+                        this.alt = 'Image failed to load';
+                        outputDiv.innerHTML += `<span class="error-message">Error: Could not load image from "${imageUrl}"</span>\n`;
+                    };
+                    outputDiv.appendChild(imgElement);
+                    outputDiv.innerHTML += '\n';
+                    idx++;
+                    continue;
+                }
+                // write ((input))
+                const writeSystemInputRegex = /^write\s+\(\(input\)\)$/;
+                if (writeSystemInputRegex.test(line)) {
+                    outputDiv.innerHTML += lastInput + '\n';
+                    idx++;
+                    continue;
+                }
+                // write (expression or variable)
+                const writeExpressionOrVarRegex = /^write\s+\((.+)\)$/;
+                const writeExpressionOrVarMatch = line.match(writeExpressionOrVarRegex);
+                if (writeExpressionOrVarMatch) {
+                    const content = writeExpressionOrVarMatch[1].trim();
+                    const isVariableOnly = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(content);
+                    if (isVariableOnly) {
+                        if (variables.hasOwnProperty(content)) {
+                            outputDiv.innerHTML += variables[content] + '\n';
+                        } else {
+                            outputDiv.innerHTML += `<span class="error-message">Error: Variable '${content}' not found (Line ${idx+1})</span>\n`;
+                        }
+                    } else {
+                        try {
+                            outputDiv.innerHTML += evaluateExpression(content, variables, lastInput) + '\n';
+                        } catch (e) {
+                            outputDiv.innerHTML += `<span class="error-message">Error: ${e.message} (Line ${idx+1})</span>\n`;
+                        }
+                    }
+                    idx++;
+                    continue;
+                }
+                // write literal
+                const writeLiteralRegex = /^write\s+(.*)$/;
+                const writeLiteralMatch = line.match(writeLiteralRegex);
+                if (writeLiteralMatch) {
+                    let contentToPrint = writeLiteralMatch[1];
+                    contentToPrint = contentToPrint.replace(/\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g, (match, varName) => {
+                        if (variables.hasOwnProperty(varName)) return variables[varName];
+                        else return `<span class="error-message">(Error: Var '${varName}' not found)</span>`;
+                    });
+                    outputDiv.innerHTML += contentToPrint + '\n';
+                    idx++;
+                    continue;
+                }
+                // variable assignment
+                const varAssignRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)\s+(.*)$/;
+                const varAssignMatch = line.match(varAssignRegex);
+                if (varAssignMatch) {
+                    const varName = varAssignMatch[1];
+                    let varValue = varAssignMatch[2].trim();
+                    const varAssignExpressionMatch = varValue.match(/^\((.+)\)$/);
+                    if (varValue === '((input))') {
+                        variables[varName] = lastInput;
+                    } else if (varAssignExpressionMatch) {
+                        try {
+                            variables[varName] = evaluateExpression(varAssignExpressionMatch[1].trim(), variables, lastInput);
+                        } catch (e) {
+                            outputDiv.innerHTML += `<span class="error-message">Error assigning to '${varName}': ${e.message} (Line ${idx+1})</span>\n`;
+                        }
+                    } else {
+                        variables[varName] = varValue;
+                    }
+                    idx++;
+                    continue;
+                }
+                // error
+                outputDiv.innerHTML += `<span class="error-message">Error on line ${idx+1}: Invalid syntax or unrecognized command: "${line}"</span>\n`;
+                idx++;
+            }
+        }
+
+        await execBlock(0, lines.length);
+    }
+});
+</script>
 </body>
 </html>
