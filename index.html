@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>S2 Language Interpreter with Functions</title>
+    <title>S2 Language Interpreter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -128,6 +128,10 @@
     <textarea id="sCodeInput" class="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 bg-gray-50 transition duration-200 ease-in-out"></textarea>
     <div class="flex gap-3 justify-center mt-6 mb-4 button-group">
         <button id="runButton" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition">Run S2 Code</button>
+        <button id="saveButton" class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition">Save S File</button>
+        <button id="openButton" class="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-md hover:bg-purple-700 transition">Open S File</button>
+        <button id="helpButton" class="px-8 py-3 bg-yellow-600 text-white font-bold rounded-lg shadow-md hover:bg-yellow-700 transition">Help</button>
+        <input type="file" id="fileInput" accept=".s2">
     </div>
     <label class="block text-lg font-semibold text-gray-700 mb-2">Output:</label>
     <div id="output"></div>
@@ -136,6 +140,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     const sCodeInput = document.getElementById('sCodeInput');
     const runButton = document.getElementById('runButton');
+    const saveButton = document.getElementById('saveButton');
+    const openButton = document.getElementById('openButton');
+    const helpButton = document.getElementById('helpButton');
+    const fileInput = document.getElementById('fileInput');
     const outputDiv = document.getElementById('output');
 
     sCodeInput.placeholder =
@@ -151,33 +159,68 @@ end
         await runSCode(sCodeInput.value);
     });
 
-    function evaluateExpression(exprString, variables, lastInput) {
-        exprString = exprString.trim();
-        exprString = exprString.replace(/\(\(input\)\)/g, () => String(lastInput));
-        let processedExpr = exprString.replace(/\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g, (match, varName) => {
-            if (variables.hasOwnProperty(varName)) {
-                return String(variables[varName]);
-            } else {
-                throw new Error(`Undefined variable '${varName}'`);
-            }
-        });
-        if (processedExpr.includes("++")) {
-            const parts = processedExpr.split("++").map(part => part.trim());
-            return parts.join('');
+    saveButton.addEventListener('click', () => {
+        const defaultFileName = "program.s2";
+        const desiredFileName = prompt("Enter filename (e.g., my_script.s2):", defaultFileName);
+        if (desiredFileName === null) {
+            outputDiv.innerHTML += `<span class="info-message">Save cancelled.</span>\n`;
+        } else {
+            const finalFileName = (desiredFileName.trim() === '') ? defaultFileName : (desiredFileName.endsWith('.s2') ? desiredFileName : desiredFileName + '.s2');
+            triggerFileDownload(sCodeInput.value, finalFileName);
+            outputDiv.innerHTML += `<span class="info-message">Code saved as '${finalFileName}'.</span>\n`;
         }
-        try {
-            if (!/^[0-9+\-*/().\s]+$/.test(processedExpr)) {
-                throw new Error("Invalid characters or syntax in arithmetic expression.");
-            }
-            const result = new Function('return ' + processedExpr)();
-            if (typeof result === 'number' && !isNaN(result)) {
-                return result;
-            } else {
-                throw new Error("Expression did not evaluate to a valid number.");
-            }
-        } catch (e) {
-            throw new Error(`Could not evaluate expression: ${e.message}`);
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    });
+
+    openButton.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            openSFile(file);
         }
+        event.target.value = '';
+    });
+
+    helpButton.addEventListener('click', () => {
+        displayHelp();
+    });
+
+    function triggerFileDownload(content, fileName) {
+        const blob = new Blob([content], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function openSFile(file) {
+        const fileName = file.name;
+        const fileExtension = fileName.split('.').pop().toLowerCase();
+        if (fileExtension !== 's2') {
+            outputDiv.innerHTML = `<span class="error-message">Unsupported format: '${fileName}'. Please select a file with the '.s2' extension.</span>\n`;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const fileContent = e.target.result;
+            sCodeInput.value = fileContent;
+            outputDiv.innerHTML += `<span class="info-message">File '${fileName}' loaded successfully. Running code...</span>\n`;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            await runSCode(fileContent);
+        };
+        reader.onerror = () => {
+            outputDiv.innerHTML = `<span class="error-message">Error reading file: '${fileName}'.</span>\n`;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        };
+        reader.readAsText(file);
     }
 
     function getUserInput(promptMessage) {
@@ -212,6 +255,62 @@ end
                 }
             });
         });
+    }
+
+    function evaluateExpression(exprString, variables, lastInput) {
+        exprString = exprString.trim();
+        exprString = exprString.replace(/\(\(input\)\)/g, () => String(lastInput));
+        let processedExpr = exprString.replace(/\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g, (match, varName) => {
+            if (variables.hasOwnProperty(varName)) {
+                return String(variables[varName]);
+            } else {
+                throw new Error(`Undefined variable '${varName}'`);
+            }
+        });
+        if (processedExpr.includes("++")) {
+            const parts = processedExpr.split("++").map(part => part.trim());
+            return parts.join('');
+        }
+        try {
+            if (!/^[0-9+\-*/().\s]+$/.test(processedExpr)) {
+                throw new Error("Invalid characters or syntax in arithmetic expression.");
+            }
+            const result = new Function('return ' + processedExpr)();
+            if (typeof result === 'number' && !isNaN(result)) {
+                return result;
+            } else {
+                throw new Error("Expression did not evaluate to a valid number.");
+            }
+        } catch (e) {
+            throw new Error(`Could not evaluate expression: ${e.message}`);
+        }
+    }
+
+    function displayHelp() {
+        outputDiv.innerHTML = '';
+        const helpContent = `
+        <div class="help-section">
+            <h3>S2 Language Commands</h3>
+            <ul>
+                <li><code>func &lt;name&gt;</code> ... <code>end</code>: Define a function. Call with <code>&lt;name&gt;</code> on its own line.</li>
+                <li><code>&lt;name&gt;</code>: Calls a function previously defined.</li>
+                <li><code>write &lt;text&gt;</code>: Prints literal text to the output.</li>
+                <li><code>write (variable_name)</code>: Prints the value of a variable.</li>
+                <li><code>write ((input))</code>: Prints the value of the last user input received by <code>writeinput</code>.</li>
+                <li><code>write (&lt;expression&gt;)</code>: Evaluates and prints the result of an arithmetic or string expression.</li>
+                <li><code>writeinput &lt;prompt_text&gt;</code>: Displays a prompt and waits for user input.</li>
+                <li><code>variable_name &lt;value&gt;</code>: Assigns a literal value to a variable.</li>
+                <li><code>variable_name ((input))</code>: Assigns the value of the last user input to a variable.</li>
+                <li><code>variable_name (&lt;expression&gt;)</code>: Assigns the result of an expression to a variable.</li>
+                <li><code>img "image_url"</code>: Displays an image from the given URL.</li>
+                <li><code>if var = "literal" then ... end</code>: Conditional block, code only runs if <code>var</code> equals <code>literal</code>.</li>
+                <li><code>if var1 = var2 then ... end</code>: Conditional block, code only runs if the variables' values are equal.</li>
+                <li><code>$</code>: Anything after a dollar sign is a comment and ignored.</li>
+            </ul>
+        </div>
+        `;
+        outputDiv.innerHTML = helpContent;
+        outputDiv.scrollTop = outputDiv.scrollHeight;
     }
 
     // --- FUNCTION SUPPORT ---
