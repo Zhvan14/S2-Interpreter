@@ -152,6 +152,10 @@ write hi
 end
 
 <hello>
+
+get css
+write I am red!
+css.style(write {color: red;})
 `;
 
     runButton.addEventListener('click', async () => {
@@ -294,6 +298,11 @@ end
             <ul>
                 <li><code>func &lt;name&gt;</code> ... <code>end</code>: Define a function. Call with <code>&lt;name&gt;</code> on its own line.</li>
                 <li><code>&lt;name&gt;</code>: Calls a function previously defined.</li>
+                <li><code>get css</code> ... <code>css.style(...)</code>: Output custom HTML and apply CSS to it, e.g.<br>
+                    <code>get css<br>
+write hello<br>
+css.style(write {color: red;})</code>
+                </li>
                 <li><code>write &lt;text&gt;</code>: Prints literal text to the output.</li>
                 <li><code>write (variable_name)</code>: Prints the value of a variable.</li>
                 <li><code>write ((input))</code>: Prints the value of the last user input received by <code>writeinput</code>.</li>
@@ -313,8 +322,6 @@ end
         outputDiv.scrollTop = outputDiv.scrollHeight;
     }
 
-    // --- FUNCTION SUPPORT ---
-    // scan for functions: returns { fname: {start, end} }
     function scanFunctions(lines) {
         const funcMap = {};
         let i = 0;
@@ -350,15 +357,56 @@ end
         let lastInput = "";
         let idx = 0;
         let skipStack = [];
+        let inCssMode = false;
+        let cssLines = [];
+        let cssStyle = "";
 
         const functions = scanFunctions(lines);
+
+        function escapeHtml(unsafe) {
+            return unsafe.replace(/[&<"'>]/g, function (m) {
+                return ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                })[m];
+            });
+        }
 
         async function execBlock(start, end) {
             let idx = start;
             let skipStack = [];
+            let inCssMode = false;
+            let cssLines = [];
+            let cssStyle = "";
+
             while (idx < end) {
                 let line = lines[idx].split('$')[0].trim();
                 if (!line) { idx++; continue; }
+
+                // CSS mode
+                if (inCssMode) {
+                    if (line.startsWith("css.style(") && line.endsWith(")")) {
+                        cssStyle = line.substring(10, line.length - 1);
+                        outputDiv.innerHTML += `<div style="${cssStyle}">${cssLines.map(l => escapeHtml(l)).join('<br>')}</div>\n`;
+                        inCssMode = false;
+                        cssLines = [];
+                        idx++;
+                        continue;
+                    } else {
+                        cssLines.push(line);
+                        idx++;
+                        continue;
+                    }
+                }
+                if (line.toLowerCase() === "get css") {
+                    inCssMode = true;
+                    cssLines = [];
+                    idx++;
+                    continue;
+                }
 
                 // skip function bodies inside block
                 let mdef = line.match(/^func\s+<([a-zA-Z_][a-zA-Z0-9_]*)>$/);
@@ -373,7 +421,7 @@ end
                     if (functions.hasOwnProperty(fname)) {
                         await execBlock(functions[fname].start, functions[fname].end);
                     } else {
-                        outputDiv.innerHTML += `<span class="error-message">Error: Function <${fname}> not found (Line ${idx+1})</span>\n`;
+                        outputDiv.innerHTML += `<span class="error-message">Error: Function &lt;${fname}&gt; not found (Line ${idx+1})</span>\n`;
                     }
                     idx++;
                     continue;
@@ -506,4 +554,4 @@ end
 });
 </script>
 </body>
-</html>
+    </html>
