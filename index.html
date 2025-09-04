@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>S2 Language Interpreter</title>
+    <title>s3 Language Interpreter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -123,15 +123,15 @@
 </head>
 <body>
 <div id="app-container">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-4">S2 Language Interpreter</h1>
-    <label for="sCodeInput" class="block text-lg font-semibold text-gray-700 mb-2">Your S2 code:</label>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-4">s3 Language Interpreter</h1>
+    <label for="sCodeInput" class="block text-lg font-semibold text-gray-700 mb-2">Your s3 code:</label>
     <textarea id="sCodeInput" class="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 bg-gray-50 transition duration-200 ease-in-out"></textarea>
     <div class="flex gap-3 justify-center mt-6 mb-4 button-group">
-        <button id="runButton" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition">Run S2 Code</button>
+        <button id="runButton" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition">Run s3 Code</button>
         <button id="saveButton" class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition">Save S File</button>
         <button id="openButton" class="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-md hover:bg-purple-700 transition">Open S File</button>
         <button id="helpButton" class="px-8 py-3 bg-yellow-600 text-white font-bold rounded-lg shadow-md hover:bg-yellow-700 transition">Help</button>
-        <input type="file" id="fileInput" accept=".s2">
+        <input type="file" id="fileInput" accept=".s3">
     </div>
     <label class="block text-lg font-semibold text-gray-700 mb-2">Output:</label>
     <div id="output"></div>
@@ -164,12 +164,12 @@ css.style(write {color: red;})
     });
 
     saveButton.addEventListener('click', () => {
-        const defaultFileName = "program.s2";
-        const desiredFileName = prompt("Enter filename (e.g., my_script.s2):", defaultFileName);
+        const defaultFileName = "program.s3";
+        const desiredFileName = prompt("Enter filename (e.g., my_script.s3):", defaultFileName);
         if (desiredFileName === null) {
             outputDiv.innerHTML += `<span class="info-message">Save cancelled.</span>\n`;
         } else {
-            const finalFileName = (desiredFileName.trim() === '') ? defaultFileName : (desiredFileName.endsWith('.s2') ? desiredFileName : desiredFileName + '.s2');
+            const finalFileName = (desiredFileName.trim() === '') ? defaultFileName : (desiredFileName.endsWith('.s3') ? desiredFileName : desiredFileName + '.s3');
             triggerFileDownload(sCodeInput.value, finalFileName);
             outputDiv.innerHTML += `<span class="info-message">Code saved as '${finalFileName}'.</span>\n`;
         }
@@ -207,8 +207,8 @@ css.style(write {color: red;})
     function openSFile(file) {
         const fileName = file.name;
         const fileExtension = fileName.split('.').pop().toLowerCase();
-        if (fileExtension !== 's2') {
-            outputDiv.innerHTML = `<span class="error-message">Unsupported format: '${fileName}'. Please select a file with the '.s2' extension.</span>\n`;
+        if (fileExtension !== 's3') {
+            outputDiv.innerHTML = `<span class="error-message">Unsupported format: '${fileName}'. Please select a file with the '.s3' extension.</span>\n`;
             outputDiv.scrollTop = outputDiv.scrollHeight;
             return;
         }
@@ -294,7 +294,7 @@ css.style(write {color: red;})
         outputDiv.innerHTML = '';
         const helpContent = `
         <div class="help-section">
-            <h3>S2 Language Commands</h3>
+            <h3>s3 Language Commands</h3>
             <ul>
                 <li><code>func &lt;name&gt;</code> ... <code>end</code>: Define a function. Call with <code>&lt;name&gt;</code> on its own line.</li>
                 <li><code>&lt;name&gt;</code>: Calls a function previously defined.</li>
